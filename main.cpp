@@ -43,67 +43,88 @@ double CFR_optimized(double lat1, double lon1, double lat2, double lon2) {
     return sqrt(ns * ns + ew * ew);
 }
 
-double speed(double lat1, double lon1, double lat2, double lon2, double (*ptr)(double lat1, double lon1, double lat2, double lon2)) {
+double speed(double lat1, double lon1, double lat2, double lon2,
+             double (*ptr)(double lat1, double lon1, double lat2, double lon2)) {
 
     auto start = std::chrono::system_clock::now();
     double func = (*ptr)(lat1, lon1, lat2, lon2);
     auto end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> diff = end - start;
-    
-    return diff.count();
+    auto res = duration_cast<std::chrono::nanoseconds>(diff);
+
+    return res.count();
 }
 
-double accuracy(double lat1, double lon1, double lat2, double lon2, double (*ptr)(double lat1, double lon1, double lat2, double lon2)){
-    //...
+double accuracy(double lat1, double lon1, double lat2, double lon2,
+                double (*ptr)(double lat1, double lon1, double lat2, double lon2)) {
+    //double init_azimuth = atan(((cos(lat1)) * tan(lat2) / (sin(lon2 - lon1))) - (sin(lat1) / tan(lon2 - lon1)));
+    //double final_azimuth = atan((sin(lat1) / (tan(lon2 - lon1))) - (cos(lat2) * tan(lat1)) / sin(lon2 - lon1));
+
+    double angular_len = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon2 - lon1));
+    double len = 111.1 * angular_len;
+
+    double res = (*ptr)(lat1, lon1, lat2, lon2);
+    return abs(len - res);
 }
 
 
 int main() {
     double (*ptr)(double lat1, double lon1, double lat2, double lon2) = nullptr;
-    ptr = haversine;
+    int size = 100000;
 
-    double sum = 0;
-    srand(time(0));
+    double sum_speed = 0;
+    double sum_accur = 0;
+    srand(time(nullptr));
 
 
-    for (int i = 0; i < 100000; ++i) {
+    for (int i = 0; i < size; ++i) {
+        ptr = haversine;
         double num1 = 1 + rand() % 100;
         double num2 = 1 + rand() % 100;
         double num3 = 1 + rand() % 100;
         double num4 = 1 + rand() % 100;
 
-        sum += (*ptr)(num1, num2, num3, num4);
+        sum_speed += speed(num1, num2, num3, num4, ptr);
+        sum_accur += accuracy(num1, num2, num3, num4, ptr);
     }
 
-    cout << "Haversine speed: " << sum / 100000.0 << endl;
+    cout << "Haversine speed: " << sum_speed / 100000.0 << endl;
+    cout << "Haversine accuracy: " << sum_accur / 100000.0 << endl;
 
     ptr = CFR;
-    sum = 0;
+    sum_speed = 0;
+    sum_accur = 0;
 
-    for (int i = 0; i < 100000; ++i) {
+    for (int i = 0; i < size; ++i) {
         double num1 = 1 + rand() % 100;
         double num2 = 1 + rand() % 100;
         double num3 = 1 + rand() % 100;
         double num4 = 1 + rand() % 100;
 
-        sum += (*ptr)(num1, num2, num3, num4);
+        sum_speed += speed(num1, num2, num3, num4, ptr);
+        sum_accur += accuracy(num1, num2, num3, num4, ptr);
     }
 
-    cout << "CFR speed: " << sum / 100000.0 << endl;
+    cout << "CFR speed: " << sum_speed / 100000.0 << endl;
+    cout << "CFR accuracy: " << sum_accur / 100000.0 << endl;
 
     ptr = CFR_optimized;
-    sum = 0;
+    sum_speed = 0;
+    sum_accur = 0;
 
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < size; ++i) {
         double num1 = 1 + rand() % 100;
         double num2 = 1 + rand() % 100;
         double num3 = 1 + rand() % 100;
         double num4 = 1 + rand() % 100;
 
-        sum += (*ptr)(num1, num2, num3, num4);
+        sum_speed += speed(num1, num2, num3, num4, ptr);
+        sum_accur += accuracy(num1, num2, num3, num4, ptr);
     }
 
-    cout << "CFR optimized speed: " << sum / 10000.0 << endl;
+    cout << "CFR optimized speed: " << sum_speed / 100000.0 << endl;
+    cout << "CFR accuracy: " << sum_accur / 100000.0 << endl;
+
     return 0;
 }
